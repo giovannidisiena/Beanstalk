@@ -14,7 +14,6 @@ import {LibIncentive} from "../../libraries/LibIncentive.sol";
 import "../../C.sol";
 import "../../interfaces/IBean.sol";
 import "../../interfaces/IWETH.sol";
-import "../../mocks/MockToken.sol";
 
 /**
  * @author Publius

@@ -5,7 +5,7 @@
 pragma solidity =0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IBlockBasefee.sol";
+import "~/interfaces/IBlockBasefee.sol";
 
 /**
  * @author Chaikitty

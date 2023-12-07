@@ -10,7 +10,7 @@ import { Utils } from "test/foundry/utils/Utils.sol";
 // Diamond setup
 import { Diamond } from "~/beanstalk/Diamond.sol";
 import { IDiamondCut } from "~/interfaces/IDiamondCut.sol";
-import { MockInitDiamond } from "~/mocks/MockInitDiamond.sol";
+import { MockInitDiamond } from "test/mocks/MockInitDiamond.sol";
 
 /// Modules
 // Diamond
@@ -20,14 +20,14 @@ import { PauseFacet } from "~/beanstalk/diamond/PauseFacet.sol";
 import { OwnershipFacet } from "~/beanstalk/diamond/OwnershipFacet.sol";
 
 // Silo
-import { MockSiloFacet } from "~/mocks/mockFacets/MockSiloFacet.sol";
+import { MockSiloFacet } from "test/mocks/mockFacets/MockSiloFacet.sol";
 import { BDVFacet } from "~/beanstalk/silo/BDVFacet.sol";
 import { ConvertFacet } from "~/beanstalk/silo/ConvertFacet.sol";
 import { WhitelistFacet } from "~/beanstalk/silo/WhitelistFacet.sol";
 
 // Field
-import { MockFieldFacet } from "~/mocks/mockFacets/MockFieldFacet.sol";
-import { MockFundraiserFacet } from "~/mocks/mockFacets/MockFundraiserFacet.sol";
+import { MockFieldFacet } from "test/mocks/mockFacets/MockFieldFacet.sol";
+import { MockFundraiserFacet } from "test/mocks/mockFacets/MockFundraiserFacet.sol";
 
 // Farm
 import { FarmFacet } from "~/beanstalk/farm/FarmFacet.sol";
@@ -38,19 +38,19 @@ import { TokenFacet } from "~/beanstalk/farm/TokenFacet.sol";
 import { BeanstalkPrice } from "~/ecosystem/price/BeanstalkPrice.sol";
 
 /// Mocks
-import { MockConvertFacet } from "~/mocks/mockFacets/MockConvertFacet.sol";
-import { MockMarketplaceFacet } from "~/mocks/mockFacets/MockMarketplaceFacet.sol";
-import { MockSeasonFacet } from "~/mocks/mockFacets/MockSeasonFacet.sol";
-import { MockFertilizerFacet } from "~/mocks/mockFacets/MockFertilizerFacet.sol";
-import { MockToken } from "~/mocks/MockToken.sol";
-import { MockUnripeFacet } from "~/mocks/mockFacets/MockUnripeFacet.sol";
-import { Mock3Curve } from "~/mocks/curve/Mock3Curve.sol";
-import { MockCurveFactory } from "~/mocks/curve/MockCurveFactory.sol";
-import { MockCurveZap } from "~/mocks/curve/MockCurveZap.sol";
-import { MockMeta3Curve } from "~/mocks/curve/MockMeta3Curve.sol";
-import { MockUniswapV3Pool } from "~/mocks/uniswap/MockUniswapV3Pool.sol";
-import { MockUniswapV3Factory } from "~/mocks/uniswap/MockUniswapV3Factory.sol";
-import { MockWETH } from "~/mocks/MockWETH.sol";
+import { MockConvertFacet } from "test/mocks/mockFacets/MockConvertFacet.sol";
+import { MockMarketplaceFacet } from "test/mocks/mockFacets/MockMarketplaceFacet.sol";
+import { MockSeasonFacet } from "test/mocks/mockFacets/MockSeasonFacet.sol";
+import { MockFertilizerFacet } from "test/mocks/mockFacets/MockFertilizerFacet.sol";
+import { MockToken } from "test/mocks/MockToken.sol";
+import { MockUnripeFacet } from "test/mocks/mockFacets/MockUnripeFacet.sol";
+import { Mock3Curve } from "test/mocks/curve/Mock3Curve.sol";
+import { MockCurveFactory } from "test/mocks/curve/MockCurveFactory.sol";
+import { MockCurveZap } from "test/mocks/curve/MockCurveZap.sol";
+import { MockMeta3Curve } from "test/mocks/curve/MockMeta3Curve.sol";
+import { MockUniswapV3Pool } from "test/mocks/uniswap/MockUniswapV3Pool.sol";
+import { MockUniswapV3Factory } from "test/mocks/uniswap/MockUniswapV3Factory.sol";
+import { MockWETH } from "test/mocks/MockWETH.sol";
 
 import "~/beanstalk/AppStorage.sol";
 import "~/libraries/Decimal.sol";

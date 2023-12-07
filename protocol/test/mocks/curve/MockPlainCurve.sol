@@ -6,39 +6,19 @@ pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../../interfaces/IBean.sol";
+import "~/interfaces/IBean.sol";
 import "../MockToken.sol";
-import "../../libraries/Curve/LibCurve.sol";
-import "../../libraries/Minting/LibCurveMinting.sol";
 
 /**
- * @author Publius + LeoFib
+ * @author Publius, LeoFib
  * @title Mock Bean3Curve Pair/Pool
 **/
 
-interface IMockCurvePool {
-    function A_precise() external view returns (uint256);
-    function get_balances() external view returns (uint256[2] memory);
-    function totalSupply() external view returns (uint256);
-    function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount) external returns (uint256);
-    function remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 min_amount) external returns (uint256);
-    function balances(int128 i) external view returns (uint256);
-    function fee() external view returns (uint256);
-    function coins(uint256 i) external view returns (address);
+interface I3Curve {
     function get_virtual_price() external view returns (uint256);
-    function calc_token_amount(uint256[2] calldata amounts, bool deposit) external view returns (uint256);
-    function calc_withdraw_one_coin(uint256 _token_amount, int128 i) external view returns (uint256);
-    function exchange(int128 i, int128 j, uint256 dx, uint256 min_dy) external returns (uint256);
-    function exchange_underlying(int128 i, int128 j, uint256 dx, uint256 min_dy) external returns (uint256);
-    function approve(address spender, uint256 amount) external returns (bool);
-    function set_virtual_price(uint256 _virtual_price) external;
-    function set_A_precise(uint256 _a) external;
-    function transfer(address recipient, uint256 amount) external returns (bool);
-    function set_supply(uint256 _supply) external;
-    function set_balances(uint256[2] calldata _balances) external;
 }
 
-contract MockMeta3Curve {
+contract MockPlainCurve {
     using SafeMath for uint256;
 
     event Approval(address indexed owner, address indexed spender, uint value);
@@ -49,6 +29,7 @@ contract MockMeta3Curve {
     uint256 constant N_COINS = 2;
     uint256 constant A_PRECISION = 100;
     uint256 constant PRECISION = 1e18;
+    uint256 constant MAX_RATE = 36;
 
     uint256 a;
     uint256[2] balances;
@@ -57,23 +38,27 @@ contract MockMeta3Curve {
     address[2] coins;
     uint256[2] price_cumulative_last;
     uint256 timestamp_last;
-    address BASE_POOL = address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 fee = 4000000;
     uint256 virtual_price;
-    uint256 rate_multiplier;
-    string private _symbol = "BEAN3CRV-f";
+    uint256[2] rate_multipliers;
 
-    constructor(address _token, address _token2, address base_pool) {
+    constructor(address _token, address _token2) {
         coins[0] = _token;
         coins[1] = _token2;
-        BASE_POOL = base_pool;
+        rate_multipliers = [
+            10 ** (MAX_RATE - MockToken(_token).decimals()), 
+            10 ** (MAX_RATE - MockToken(_token2).decimals())
+        ];
     }
 
-    function init(address _token, address _token2, address base_pool) external {
+    function init(address _token, address _token2) external {
         coins[0] = _token;
         coins[1] = _token2;
-        BASE_POOL = base_pool;
-        rate_multiplier = 10 ** (36 - MockToken(_token).decimals());
+        rate_multipliers = [
+            10 ** (MAX_RATE - MockToken(_token).decimals()), 
+            10 ** (MAX_RATE - MockToken(_token2).decimals())
+        ];
+        
     }
 
     function A_precise() external view returns (uint256) {
@@ -112,14 +97,6 @@ contract MockMeta3Curve {
         virtual_price = _virtual_price;
     }
 
-    function symbol() public view returns (string memory) {
-        return _symbol;
-    }
-
-    function setSymbol(string memory sym) public {
-        _symbol = sym;
-    }
-
     // TWAP
 
     function update(uint256[2] calldata new_balances) public {
@@ -146,19 +123,6 @@ contract MockMeta3Curve {
         return timestamp_last;
     }
 
-    function get_bean_price() external view returns (uint256 price) {
-        uint256[2] memory rates = get_rates();
-        uint256[2] memory xp = LibCurve.getXP(balances, rates);
-        uint256 D = LibCurve.getD(xp, a);
-        price = LibCurve.getPrice(xp, rates, a, D);
-    }
-    
-    function get_rates() private view returns (uint256[2] memory rates) {
-        // Decimals will always be 6 because we can only mint beans
-        // 10**(36-decimals)
-        return [1e30, virtual_price];
-    }
-
     function reset() external {
         balances = [0,0];
         supply = 0;
@@ -167,58 +131,14 @@ contract MockMeta3Curve {
         reset_cumulative();
     }
 
-    function exchange(
-        int128 _i_,
-        int128 _j_,
-        uint256 dx,
-        uint256 min_dy
-    ) external returns (uint256) {
-        return exchange(_i_, _j_, dx, min_dy, msg.sender);
-    }
-
-    function exchange(
-        int128 _i_,
-        int128 _j_,
-        uint256 dx,
-        uint256 min_dy,
-        address _receiver
-    ) public returns (uint256) {
-        uint256 i = uint256(_i_);
-        uint256 j = uint256(_j_);
-        _update();
-        uint256[N_COINS] memory rates = [rate_multiplier, I3Curve(BASE_POOL).get_virtual_price()];
-        uint256[N_COINS] memory xp = _xp_mem(rates, balances);
-
-        // uint256 x = xp[i] + dx * rates[i] / PRECISION;
-        // uint256 y = get_y(i, j, xp[i] + dx * rates[i] / PRECISION, xp);
-
-        uint256 dy = xp[j] - get_y(i, j, xp[i] + dx * rates[i] / PRECISION, xp) - 1;
-        uint256 dy_fee = dy * fee / FEE_DENOMINATOR;
-
-        dy = (dy - dy_fee) * PRECISION / rates[j];
-        require(dy >= min_dy, "Curve: error"); 
-
-        uint256 dy_admin_fee = dy_fee * ADMIN_FEE / FEE_DENOMINATOR;
-        dy_admin_fee = dy_admin_fee * PRECISION / rates[j];
-
-        balances[i] = balances[i] + dx;
-        balances[j] = balances[j] - dy - dy_admin_fee;
-
-        ERC20(coins[i]).transferFrom(msg.sender, address(this), dx);
-        ERC20(coins[j]).transfer(_receiver, dy);
-
-        return dy;
-    }
+    // @param _amounts List of amounts of coins to deposit
+    // @param _min_mint_amount Minimum amount of LP tokens to mint from the deposit
 
     function add_liquidity(uint256[N_COINS] memory _amounts, uint256 _min_mint_amount) external returns (uint256) {
-        return add_liquidity(_amounts, _min_mint_amount, msg.sender);
-    }
-
-    function add_liquidity(uint256[N_COINS] memory _amounts, uint256 _min_mint_amount, address _receiver) public returns (uint256) {
         _update();
         previousBalances = balances;
         uint256 amp = a;
-        uint256[N_COINS] memory rates = [rate_multiplier, I3Curve(BASE_POOL).get_virtual_price()];
+        uint256[N_COINS] memory rates = rate_multipliers;
 
         uint256[N_COINS] memory old_balances = balances;
         uint256 D0 = get_D_mem(rates, old_balances, amp);
@@ -233,6 +153,7 @@ contract MockMeta3Curve {
         }
 
         uint256 D1 = get_D_mem(rates, new_balances, amp);
+
         require(D1 > D0, "New D high");
 
         uint256[N_COINS] memory fees;
@@ -265,105 +186,10 @@ contract MockMeta3Curve {
         }
 
         total_supply += mint_amount;
-        _balanceOf[_receiver] += mint_amount;
+        _balanceOf[msg.sender] += mint_amount;
         supply = total_supply;
 
         return mint_amount;
-    }
-
-    function remove_liquidity(
-        uint256 _burn_amount,
-        uint256[N_COINS] calldata _min_amounts
-    ) external returns (uint256[N_COINS] memory amounts) {
-        return remove_liquidity(_burn_amount, _min_amounts, msg.sender);
-    }
-
-    function remove_liquidity(
-        uint256 _burn_amount,
-        uint256[N_COINS] calldata _min_amounts,
-        address _receiver
-    ) public returns (uint256[N_COINS] memory amounts) {
-        _update();
-
-        for (uint256 i; i < N_COINS; ++i) {
-            uint256 old_balance = balances[i];
-            uint256 value = old_balance * _burn_amount / supply;
-            require(value >= _min_amounts[i]);
-            balances[i] = old_balance - value;
-            amounts[i] = value;
-            ERC20(coins[i]).transfer(_receiver, value);
-        }
-
-        supply -= _burn_amount;
-        _balanceOf[msg.sender] -= _burn_amount;
-
-        return amounts;
-    }
-
-    function remove_liquidity_imbalance(
-        uint256[N_COINS] memory _amounts,
-        uint256 _max_burn_amount
-    ) external returns (uint256) {
-        return remove_liquidity_imbalance(_amounts, _max_burn_amount, msg.sender);
-    }
-
-    function remove_liquidity_imbalance(
-        uint256[N_COINS] memory _amounts,
-        uint256 _max_burn_amount,
-        address _receiver
-    ) public returns (uint256) {
-        _update();
-
-        uint256 amp = a;
-        uint256[N_COINS] memory rates = [rate_multiplier, I3Curve(BASE_POOL).get_virtual_price()];
-        uint256[N_COINS] memory old_balances = balances;
-        uint256 D0 = get_D_mem(rates, old_balances, amp);
-
-        uint256[N_COINS] memory new_balances = old_balances;
-        for (uint256 i; i < N_COINS; ++i) {
-            new_balances[i] -= _amounts[i];
-        }
-        uint256 D1 = get_D_mem(rates, new_balances, amp);
-
-        uint256[N_COINS] memory fees;
-        uint256 base_fee = fee * N_COINS / (4 * (N_COINS - 1));
-        for (uint256 i; i < N_COINS; ++i) {
-            uint256 ideal_balance = D1 * old_balances[i] / D0;
-            uint256 difference = 0;
-            uint256 new_balance = new_balances[i];
-            if (ideal_balance > new_balance) {
-                difference = ideal_balance - new_balance;
-            } else {
-                difference = new_balance - ideal_balance;
-                fees[i] = base_fee * difference / FEE_DENOMINATOR;
-                balances[i] = new_balance - (fees[i] * ADMIN_FEE / FEE_DENOMINATOR);
-                new_balances[i] -= fees[i];
-            }
-        }
-        uint256 D2 = get_D_mem(rates, new_balances, amp);
-
-        uint256 burn_amount = ((D0 - D2) * supply / D0) + 1;
-        require(burn_amount > 1);
-        require(burn_amount <= _max_burn_amount);
-
-        supply -= burn_amount;
-        _balanceOf[msg.sender] -= burn_amount;
-
-        for (uint256 i; i < N_COINS; ++i) {
-            uint256 amount = _amounts[i];
-            if (amount != 0) {
-                ERC20(coins[i]).transfer(_receiver, amount);
-            }
-        }
-        return burn_amount;
-    }
-
-    function remove_liquidity_one_coin(
-        uint256 _burn_amount,
-        int128 _i_,
-        uint256 _min_received
-    ) external returns (uint256) {
-        return remove_liquidity_one_coin(_burn_amount, _i_, _min_received, msg.sender);
     }
 
     // @notice Withdraw a single coin from the pool
@@ -375,9 +201,8 @@ contract MockMeta3Curve {
     function remove_liquidity_one_coin(
         uint256 _burn_amount,
         int128 _i_,
-        uint256 _min_received,
-        address _receiver
-    ) public returns (uint256) {
+        uint256 _min_received
+    ) external returns (uint256) {
         _update();
         uint256 i = uint256(_i_);
         (uint256 dy, uint256 dy_fee) = _calc_withdraw_one_coin(_burn_amount, _i_, balances);
@@ -386,7 +211,7 @@ contract MockMeta3Curve {
         balances[i] -= (dy + dy_fee * ADMIN_FEE / FEE_DENOMINATOR);
         supply = supply - _burn_amount;
         _balanceOf[msg.sender] -= _burn_amount;
-        IBean(coins[i]).transfer(_receiver, dy);
+        IBean(coins[i]).transfer(msg.sender, dy);
 
         return dy;
     }
@@ -397,7 +222,7 @@ contract MockMeta3Curve {
         // Solve Eqn against y_i for D - _token_amount
         uint256 i = uint256(_i_);
         uint256 amp = a;
-        uint256[N_COINS] memory rates = [rate_multiplier, I3Curve(BASE_POOL).get_virtual_price()];
+        uint256[N_COINS] memory rates = rate_multipliers;
         uint256[N_COINS] memory xp = _xp_mem(rates, _balances);
         uint256 D0 = get_D(xp, amp);
 
@@ -423,9 +248,20 @@ contract MockMeta3Curve {
         return (dy, dy_0 - dy);
     }
 
-    function calc_withdraw_one_coin(uint256 _burn_amount, int128 i) external view returns (uint256 amount) {
-       (amount,) = _calc_withdraw_one_coin(_burn_amount, i, balances);
-    }
+
+// @view
+// @external
+// def calc_withdraw_one_coin(_burn_amount: uint256, i: int128, _previous: bool = False) -> uint256:
+//     @notice Calculate the amount received when withdrawing a single coin
+//     @param _burn_amount Amount of LP tokens to burn in the withdrawal
+//     @param i Index value of the coin to withdraw
+//     @param _previous indicate to use previous_balances or current balances
+//     @return Amount of coin received
+//     """
+//     balances: uint256[N_COINS] = balances
+//     if _previous:
+//         balances = previous_balances
+//     return _calc_withdraw_one_coin(_burn_amount, i, balances)[0]
 
     function _xp_mem(uint256[N_COINS] memory _rates, uint256[N_COINS] memory _balances) pure private returns (uint256[N_COINS] memory result) {
         for (uint256 i; i < N_COINS; ++i) {
@@ -502,52 +338,15 @@ contract MockMeta3Curve {
         require(false, "Price: Convergence false");
     }
 
-    function get_y(uint256 i, uint256 j, uint256 x, uint256[N_COINS] memory xp) private view returns (uint256 y) {
-
-        require(i != j);
-        require(j >= 0);
-        require(j < N_COINS);
-
-        require(i >= 0);
-        require(i < N_COINS);
-
-        uint256 amp = a;
-        uint256 D = get_D(xp, amp);
-        uint256 S_ = 0;
-        uint256 _x = 0;
-        uint256 y_prev = 0;
-        uint256 c = D;
-        uint256 Ann = amp * N_COINS;
-
-        for (uint256 _i; _i < N_COINS; ++_i) {
-            if (_i == i) _x = x;
-            else if (_i != j) _x = xp[_i];
-            else continue;
-            S_ += _x;
-            c = c * D / (_x * N_COINS);
-        }
-
-        c = c * D * A_PRECISION / (Ann * N_COINS);
-        uint256 b = S_ + D * A_PRECISION / Ann; // - D
-        y = D;
-
-        for (uint256 _i; _i < 255; ++_i) {
-            y_prev = y;
-            y = (y*y + c) / (2 * y + b - D);
-            if (y > y_prev && y - y_prev <= 1) return y;
-            else if (y_prev - y <= 1) return y;
-        }
-        require(false, "Curve: Convergence false");
-    }
     function calc_token_amount(uint256[N_COINS] memory _amounts, bool _is_deposit) public view returns (uint256) {   
         uint256[N_COINS] memory _balances = balances;
 
-        uint256 D0 = get_D_mem([rate_multiplier, 1e18], _balances, a);
+        uint256 D0 = get_D_mem(rate_multipliers, _balances, a);
         for (uint256 i; i < N_COINS; ++i) {
             if (_is_deposit) _balances[i] += _amounts[i];
             else _balances[i] -= _amounts[i];
         }
-        uint256 D1 = get_D_mem([rate_multiplier, 1e18], _balances, a);
+        uint256 D1 = get_D_mem(rate_multipliers, _balances, a);
         uint256 diff = 0;
         if (_is_deposit) diff = D1 - D0;
         else diff = D0 - D1;

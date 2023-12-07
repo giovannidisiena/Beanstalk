@@ -7,7 +7,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
-import {ERC20Permit} from "../tokens/ERC20/ERC20Permit.sol";
+import {ERC20Permit} from "~/tokens/ERC20/ERC20Permit.sol";
 
 /**
  * @author Publius

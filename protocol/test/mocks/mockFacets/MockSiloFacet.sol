@@ -6,9 +6,9 @@ pragma solidity =0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../../beanstalk/silo/SiloFacet/SiloFacet.sol";
-import "../../libraries/Silo/LibWhitelist.sol";
-import "../../libraries/Silo/LibLegacyTokenSilo.sol";
+import "~/beanstalk/silo/SiloFacet/SiloFacet.sol";
+import "~/libraries/Silo/LibWhitelist.sol";
+import "~/libraries/Silo/LibLegacyTokenSilo.sol";
 
 /**
  * @author Publius

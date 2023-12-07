@@ -5,11 +5,11 @@
 pragma solidity =0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IBean.sol";
-import "../interfaces/IWETH.sol";
+import "~/interfaces/IBean.sol";
+import "~/interfaces/IWETH.sol";
 import "../mocks/MockToken.sol";
-import {AppStorage} from "../beanstalk/AppStorage.sol";
-import "../C.sol";
+import {AppStorage} from "~/beanstalk/AppStorage.sol";
+import "~/C.sol";
 import "contracts/beanstalk/init/InitWhitelist.sol";
 
 /**

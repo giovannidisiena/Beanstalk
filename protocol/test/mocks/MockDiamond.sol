@@ -11,10 +11,10 @@ pragma experimental ABIEncoderV2;
 import {LibDiamond} from "../libraries/LibDiamond.sol";
 import {DiamondCutFacet} from "../beanstalk/diamond/DiamondCutFacet.sol";
 import {DiamondLoupeFacet} from "../beanstalk/diamond/DiamondLoupeFacet.sol";
-import {AppStorage} from "../beanstalk/AppStorage.sol";
-import {IERC165} from "../interfaces/IERC165.sol";
-import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
-import {IDiamondLoupe} from "../interfaces/IDiamondLoupe.sol";
+import {AppStorage} from "~/beanstalk/AppStorage.sol";
+import {IERC165} from "~/interfaces/IERC165.sol";
+import {IDiamondCut} from "~/interfaces/IDiamondCut.sol";
+import {IDiamondLoupe} from "~/interfaces/IDiamondLoupe.sol";
 
 contract MockDiamond {
     AppStorage internal s;
